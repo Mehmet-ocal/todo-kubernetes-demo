@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes To-Do App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        h2 { text-align: center; color: #333; margin-bottom: 25px; font-weight: 600; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: #667eea; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s, transform 0.1s;
+        }
+        button:hover { background: #5a67d8; }
+        button:active { transform: scale(0.95); }
+        
+        ul { list-style: none; max-height: 300px; overflow-y: auto; padding-right: 5px; }
+        ul::-webkit-scrollbar { width: 5px; }
+        ul::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 5px; }
+        
+        li {
+            background: #f7fafc;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            color: #2d3748;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: transform 0.2s;
+            border-left: 4px solid #667eea;
+        }
+        li:hover { transform: translateX(5px); }
+        .empty-state { text-align: center; color: #a0aec0; font-size: 14px; margin-top: 10px; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🚀 TO-DO APP</h2>
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="Yeni bir görev yazın...">
+            <button onclick="addTask()" id="addBtn">Ekle</button>
+        </div>
+        <ul id="taskList"></ul>
+    </div>
+
+    <script>
+        const input = document.getElementById('taskInput');
+        const btn = document.getElementById('addBtn');
+
+        // İşlevsellik 1: "Enter" tuşu ile görev ekleme
+        input.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addTask();
+            }
+        });
+
+        function fetchTasks() {
+            fetch('/api/todos')
+                .then(res => res.json())
+                .then(data => {
+                    const list = document.getElementById('taskList');
+                    list.innerHTML = '';
+                    
+                    // İşlevsellik 2: Eğer liste boşsa kullanıcıya şık bir mesaj göster
+                    if (data.length === 0) {
+                        list.innerHTML = '<div class="empty-state">Henüz bir görev eklenmemiş. Hadi başlayalım!</div>';
+                        return;
+                    }
+                    
+                    data.forEach(item => {
+                        list.innerHTML += `
+                        <li>
+                            <span style="flex: 1;">${item.task}</span>
+                            <button style="background: #fc8181; padding: 5px 10px; font-size: 12px;" onclick="deleteTask(${item.id})">Sil</button>
+                        </li>`;
+                    });
+                })
+                .catch(err => console.error("Veri çekilemedi:", err));
+        }
+
+        function addTask() {
+            // İşlevsellik 3: Boşluk karakterlerini temizle ve boşsa ekleme yapma
+            const taskValue = input.value.trim();
+            if(!taskValue) return;
+
+            // İşlevsellik 4: Yükleniyor durumu (Kullanıcıya geri bildirim)
+            const originalText = btn.innerText;
+            btn.innerText = '...';
+            btn.disabled = true;
+
+            fetch('/api/todos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task: taskValue })
+            }).then(() => {
+                input.value = '';
+                fetchTasks(); // Listeyi yenile
+            }).finally(() => {
+                // İşlem bitince butonu eski haline getir
+                btn.innerText = originalText;
+                btn.disabled = false;
+                input.focus();
+            });
+        }
+
+        // İşlevsellik 5: Görevi Silme (Veritabanından ve Ekrandan)
+        function deleteTask(id) {
+            fetch(`/api/todos/${id}`, {
+                method: 'DELETE'
+            }).then(() => {
+                fetchTasks(); // Silme işleminden sonra listeyi yenile
+            }).catch(err => console.error("Silinemedi:", err));
+        }
+
+        // Sayfa açıldığında verileri getir
+        fetchTasks();
+    </script>
+</body>
+</html>

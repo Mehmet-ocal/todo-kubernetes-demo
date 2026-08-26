@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: todo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-backend
+  template:
+    metadata:
+      labels:
+        app: todo-backend
+    spec:
+      containers:
+        - name: backend
+          image: ocaltubitak/todo-kube-backend:v2
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: todo-configmap
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: db-password
